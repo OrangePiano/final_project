@@ -29,19 +29,63 @@ summary(credit)
 
 ########---------------------kmodes - clustering categorical data
 #create the mode algorithm by hand - kmodes:
-kmodes_manually <- function(dataset, modes, iterations){
-  #here we can implement it mannualy:
-    #1. Select k initial modes, one for each cluster.
-    #2. Allocate an object to the cluster whose mode is the nearest to it according to (5). Update
-    #the mode of the cluster after each allocation according to Theorem 1.
-    #3. After all objects have been allocated to clusters, retest the dissimilarity of objects against
-    #the current modes. If an object is found such that its nearest mode belongs to another
-    #cluster rather than its current one, reallocate the object to that cluster and update the
-    #modes of both clusters.
-    #4. Repeat 3 until no object has changed clusters after a full cycle test of the whole data set.
+kmodes_manually <- function(dataset, modes_count, max_iter){
+  #define useful functions for the algorithm:
+  
+    #function that finds distance between two rows of categorical variables:
+  cat_dist = function(x,y){
+    sum(x != y)
+  }  
+  
+    #function that finds the closest mode from cluster modes the to row x:
+  closest_mode = function(x, modes){
+    distances = apply(modes, MARGIN = 1, cat_dist, y = x)
+    index = which(distances==min(distances))
+    index = index[1] #to avoid multiple modes
+    return(index)
+  }
+    
+    #function that finds the most frequent string in a vector:
+  find_mode = function(x){
+    ta = table(x)
+    tam = max(ta)
+    mod = names(ta)[ta == tam]
+    mod = mod[1] #select only one mode
+    return(mod)
+  }
+  
+  #1. Select k initial modes, one for each cluster.
+  dataset = apply(dataset, MARGIN = 2, FUN = as.character)
+  dataset = as.matrix(dataset)
+  modes = dataset[1:modes_count,] #vyber prvnich modes
+  assigned_clusters_old = c(rep(1, nrow(dataset)))
+  
+  iter = 1
+  repeat{
+    #2a. Allocate an object to the cluster whose mode is the nearest to it according to (5).
+    assigned_clusters = apply(dataset, MARGIN = 1, closest_mode, modes = modes)
+    
+    #2b. Update the mode of the cluster after each allocation according to Theorem 1.
+    for(i in 1:modes_count){
+      new_mode = t(as.matrix(apply(dataset[assigned_clusters==i,], MARGIN = 2, find_mode)))
+      modes[i,] = new_mode
+    }
+    
+    iter = iter+1
+    
+    if( all(assigned_clusters == assigned_clusters_old) | iter == max_iter ){
+      break
+    }
+    
+    assigned_clusters_old = assigned_clusters
+    
+  }
+  
+  return(assigned_clusters)
 }
 
-clusters_manually = kmodes_manually(soy, 10, 100)
+cluster = kmodes_manually(dataset = soy, modes_count = 10, max_iter = 1000)
+print(cluster)
 
 #or use library "klaR" with function kmodes:
 c_soy = kmodes(soy, 10)
@@ -63,6 +107,7 @@ c_cred$cluster
 
 #nejake vizualiace a zavery, zhodnoceni kvality clusteru, nalezeni optimalniho poctu clusteru
 #hodnota gamma/lamda jestli dava smysl apod.
+
 
 
 
