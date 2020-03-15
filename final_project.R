@@ -12,21 +12,21 @@ library(stats)
 ########---------------------data loading and cleaning:
 #from https://datahub.io/machine-learning/soybean#resource-soybean
 #soy datatset, contains only categorical features:
-soy = read.csv("soybean_csv.csv", sep = ",", header = T)
+soy = read.csv("soybean_csv.csv", sep = ",", header = T, stringsAsFactors = F)
 head(soy)
 str(soy)
 summary(soy)
-#remove NA's: ... 
+soy = na.omit(soy)
 
 
 #from https://datahub.io/machine-learning/credit-approval#resource-credit-approval
 #credit dataset, contains both categorical and numerical features
-credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = FALSE)
+credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = F)
 head(credit)
 str(credit)
 summary(credit)
 credit = na.omit(credit)
-#remove NA's: ... 
+
 
 ########---------------------kmodes - clustering categorical data
 #create the mode algorithm by hand - kmodes:
@@ -110,7 +110,7 @@ kproto_manually = function(dataset, cluster_count, gamma, max_iter){
   
   #define useful functions for the algorithm:
   
-    #function that finds distance between two rows of variables:
+    #function that finds distance between two variables:
   mixed_dist = function(x,y){
     ED =  sum((as.numeric(x[number]) - as.numeric(y[number]))**2)**0.5
     mix = gamma * sum(x[!number] != y[!number]) + ED
@@ -128,7 +128,7 @@ kproto_manually = function(dataset, cluster_count, gamma, max_iter){
     #function that finds the most frequent string in a vector:
   find_mode = function(x){
     #categorical features
-    ta = max(table(x))
+    ta = table(x)
     tam = max(ta)
     mod_cat = names(ta)[ta == tam]
     mod_cat = mod_cat[1] #select only one mode
@@ -150,11 +150,11 @@ kproto_manually = function(dataset, cluster_count, gamma, max_iter){
     for(i in 1:modes_count){
       if(sum(assigned_clusters==i)>0){
         new_mode_cat = t(as.matrix(apply(dataset[assigned_clusters==i,!number], MARGIN = 2, find_mode)))
-        #new_mode_num = t(as.matrix(apply(dataset[assigned_clusters==i,number], MARGIN = 2, 
-                                         #function(w) mean(as.numeric(w))
-                                         #)))
+        new_mode_num = t(as.matrix(apply(dataset[assigned_clusters==i,number], MARGIN = 2, 
+                                         function(w) mean(as.numeric(w))
+                                         )))
         modes[i,!number] = new_mode_cat
-        #modes[i, number] = new_mode_num
+        modes[i, number] = new_mode_num
       }
     }
     
@@ -171,6 +171,7 @@ kproto_manually = function(dataset, cluster_count, gamma, max_iter){
   return(assigned_clusters)
 }
 
+  
 summary(number)
 clust_proto = kproto_manually(credit,10,1,1000)
 
