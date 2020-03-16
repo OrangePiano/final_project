@@ -30,7 +30,7 @@ credit = na.omit(credit)
 #################################################################
 ########---------------------kmodes - clustering categorical data
 #create the mode algorithm by hand - kmodes:
-kmodes_manually <- function(dataset, modes_count = 2, method = 1, max_iter = 100){
+kmodes_fit <- function(dataset, modes_count = 4, method = 1, max_iter = 100){
   #arguments are:
   #   dataset: dataset to cluster, all columns are treated as categories (characters)
   #   modes_count: number of clusters to cluster the dataset
@@ -140,7 +140,30 @@ kmodes_manually <- function(dataset, modes_count = 2, method = 1, max_iter = 100
   
   return(list(assigned_clusters, as.data.frame(modes)))
 }
-cluster_kmodes = kmodes_manually(dataset = soy[,-ncol(soy)])
+cluster_kmodes = kmodes_fit(dataset = soy[1:400,-ncol(soy)])
+
+kmodes_predict <-function(dataset, modes){
+  dataset = apply(dataset, MARGIN = 2, FUN = as.character)
+  dataset = as.matrix(dataset)
+  
+  #function that finds distance between two rows of categorical variables:
+  cat_dist = function(x,y){
+    sum(x != y)
+  }  
+  
+  #function that finds the index of closest mode from modes defining clusters to the row x:
+  closest_mode = function(x, modes){
+    distances = apply(modes, MARGIN = 1, cat_dist, y = x)
+    index = which(distances==min(distances))
+    index = index[1] #to avoid multiple modes
+    return(index)
+  }
+  
+  prediction = apply(dataset, 1, closest_mode, modes = modes)
+  return(prediction)
+}
+predicted_kmodes = kmodes_predict(dataset = soy[401:683,-ncol(soy)], cluster_kmodes[[2]])
+table(predicted_kmodes, soy[401:683,ncol(soy)])
 
 #or use library "klaR" with function kmodes:
 c_soy = kmodes(soy, 10)
@@ -152,7 +175,7 @@ c_soy$cluster
 ########################################################################################
 ########---------------------kproto - clustering both numerical and categorical features
 #create kproto_manually:
-kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100, method = 1){
+kproto_fit = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100, method = 1){
   #arguments are:
   #   dataset: dataset to cluster
   #         * columns of type "double" or "interger" are treated as real numbers
@@ -274,7 +297,36 @@ kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100
   modes[,number] = apply(modes[,number], 2, as.numeric)
   return(list(assigned_clusters, modes))
 }
-clust_kproto = kproto_manually(credit[,-ncol(credit)])
+clust_kproto = kproto_fit(credit[,-ncol(credit)])
+
+kproto_predict = function(dataset, modes, gamma = 1){#use the same gamma as when fitting!
+  
+  #function that finds distance between two variables:
+  mixed_dist = function(x,y){
+    ED =  sum((as.numeric(x[number]) - as.numeric(y[number]))**2)**0.5
+    mix = gamma * sum(x[!number] != y[!number]) + ED
+    return(mix)
+  } 
+  
+  #function that finds the index of the closest mode from the given cluster modes to the x:
+  closest_mix_mode = function(x, modes){
+    distances = apply(modes, MARGIN = 1, mixed_dist, y = x)
+    index = which(distances==min(distances))
+    index = index[1] #to avoid multiple modes
+    return(index)
+  }
+  
+  type = lapply(dataset, typeof)
+  number = type %in% c("double","integer")
+  
+  #convert data into matrix of characters
+  dataset = apply(dataset, MARGIN = 2, FUN = as.character)
+  dataset = as.matrix(dataset)
+  modes = as.matrix(modes)
+  prediction = apply(dataset, MARGIN = 1, FUN = closest_mix_mode, modes = modes)
+  return(prediction)
+}
+predicted_kproto = kproto_predict(credit[,-ncol(credit)],clust_kproto[[2]])
 
 #or use library "clustMixType" with function kproto:
 c_cred = kproto(credit,10,1, keep.data = T)
