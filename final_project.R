@@ -4,6 +4,8 @@
 #download the required packages:
 #install.packages("klaR")
 #install.packages("clustMixType")
+#install.packages("dendextend")
+#install.packages("randomcoloR")
 
 library(klaR)
 library(clustMixType)
@@ -11,6 +13,8 @@ library(stats)
 library(dplyr)
 library(cluster)
 library(ggplot2)
+library(dendextend)
+library(randomcoloR)
 
 ########---------------------data loading and cleaning: ####
 #from https://datahub.io/machine-learning/soybean#resource-soybean
@@ -20,19 +24,35 @@ head(soy)
 str(soy)
 summary(soy)
 soy_set = na.omit(soy)
-soy_set <- soy[,-36] 
-str(soy_set)
+soy_set$class <- droplevels(soy_set$class)
+
+# Checking the unique values in provided variables
+unique_soy_set_var <- data.frame(matrix(NA, nrow = 35, ncol = 2))
+for (i in 1:35) {
+  unique_soy_set_var[i,1] <- names(soy_set[i])
+  unique_soy_set_var[i,2] <- nlevels(unique(soy_set[,i]))
+}
+unique_soy_set_var[which(unique_credit_set_var$X2==1),]
+nlevels(unique(soy_set_class))
+
 
 #from https://datahub.io/machine-learning/credit-approval#resource-credit-approval
 #credit dataset, contains both categorical and numerical features
-credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = T)
+credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = T, na.strings = c("", "NA"))
 head(credit)
 str(credit)
 summary(credit)
 credit_set <- na.omit(credit)
-credit_set <- credit[,-16]
-str(credit_set)
 
+# Checking uniqueness in each variable
+unique_credit_set_var <- data.frame(matrix(NA, nrow = 15, ncol = 2))
+for (i in 1:15) {
+  unique_credit_set_var[i,1] <- names(credit_set[i])
+  unique_credit_set_var[i,2] <- ifelse(nlevels(unique(credit_set[,i]))==0,
+                                  length(unique(credit_set[,i])),
+                                  nlevels(unique(credit_set[,i]))
+  )
+}
 
 #### Soy Data Set ####
 ########---------------------kmodes - clustering categorical data ####
@@ -168,7 +188,22 @@ unique(soy[,36])
 # Which is not equal to 20, which is in fact our number of diseases that was classified.
 # This can be due to similarities in the diseases
 hc <- hclust(daisy(soy_set), method = "complete")
+str(hc)
 plot(hc)
+dendro <- as.dendrogram(hc)
+
+dendro.col <- dendro %>%
+  set("branches_k_color", k = 15, value = distinctColorPalette(15)) %>%
+  set("branches_lwd", 0.6) %>%
+  set("labels_colors", 
+      value = c("darkslategray")) %>% 
+  set("labels_cex", 0.5)
+
+ggd1 <- as.ggdend(dendro.col)
+
+ggplot(dendro.col, theme = theme_minimal()) +
+  scale_y_reverse(expand = c(0.2,0)) +
+  coord_polar(theta = "x")
 
 
 #evaluate the clusters somehow, vizualize the clustering measures based on the number of clusters
@@ -305,7 +340,84 @@ kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100
 clust_kproto = kproto_manually(credit[,-ncol(credit)])
 
 #or use library "clustMixType" with function kproto:
-c_cred = kproto(credit,10,1)
+c_cred = kproto(credit_set,2,1)
+c_cred_lambda <- lambdaest(x = credit_set)
+c_cred <- kproto(x = credit_set, k = 2, lambda = 940941)
+
+c_cred$cluster
+
+c_cred_tau_opt <- tau_kproto(data = credit_set, k = 2:5, nstart = 5, verbose = FALSE)
+c_cred_sil_opt <- silhouette_kproto(data = credit_set, k = 2:5, nstart = 5, verbose = FALSE)
+str(c_cred_tau_opt) # The test take a long time to achieve the results, we got 5 clusters
+str(c_cred_sil_opt) # The test take a long time to achieve the results, we got 4 clusters
+
+for (i in 1:10) {
+  c_cred_loop <- kproto(data = credit_set, k = i, lambda = 940941)
+}
+
+
+bind <- cbind(credit_set_class, c_cred$cluster)
+
+credit_set_class <- replace(credit_set_class, c("+", "-"))
 
 #nejake vizualiace a zavery, zhodnoceni kvality clusteru, nalezeni optimalniho poctu clusteru
 #hodnota gamma/lamda jestli dava smysl apod.
+
+##### Replicating the results ####
+##### Soy Bean data set ####
+##### To do list ####
+# 1. Which diseas is initial cluster? 
+# 2. Which diseas is each cluster? 
+soy_set_testset_1 <- soy_set[sample(1:dim(soy_set)[1]),]
+soy_set_testset_1_class <- soy_set$class
+soy_set_testset_1 <- soy_set[,-36]
+table(soy_set_testset_1_class)
+
+c_soy_testset_1 <- kmodes(data = soy_set_testset_1, modes = 19)
+c_soy_testset_1$cluster
+sum(c_soy_testset_1$size)
+
+str(table(c_soy_testset_1$cluster))
+test_soy_results <- table(c_soy_testset_1$cluster)
+table(c_soy_testset_1$cluster)[[1]]
+soy_set_testset_1_class
+mean(c_soy_testset_1$cluster==soy_set_testset_1_class) # not working as we dont know which class is which diseases
+
+
+soy_results <- data.frame(matrix(NA, ncol = 15, nrow = 10))
+for(i in 1:10) {
+  soy_set_testset <- soy_set[sample(1:dim(soy_set)[1]),]
+  soy_set_testset <- soy_set[,-36]
+  c_soy_testset <- kmodes(data = soy_set_testset_1, modes = 15, iter.max = 100)
+  for(j in 1:15) {
+    soy_results[i,j] <- c_soy_testset$size[[j]]
+  }
+}
+
+soy_results %>%
+  mutate(SUM = rowSums(soy_results))
+boxplot(soy_results)
+table(soy_set$class)
+
+
+#### Credit Data Set ####
+credit_set_testset_1 <- credit_set[sample(1:dim(credit_set)[1]),]
+credit_set_testset_1_class <- credit_set$class
+credit_set_testset_1 <- credit_set_testset_1[,-16]
+
+c_credit_set_testset_1 <- kproto(x = credit_set_testset_1, k = 2)
+
+
+credit_results <- data.frame(matrix(NA, ncol = 2, nrow = 100))
+for(i in 1:100) {
+  credit_set_testset <- credit_set[sample(1:dim(soy_set)[1]),]
+  credit_set_testset <- credit_set[,-36]
+  c_credit_testset <- kproto(x = credit_set_testset, k = 2, iter.max = 100)
+  for(j in 1:2) {
+    credit_results[i,j] <- c_credit_testset$size[[j]]
+  }
+}
+table(credit_set$class)
+unique(credit_results)
+length(unique(credit_results$X1))
+
