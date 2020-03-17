@@ -8,6 +8,7 @@
 library(klaR)
 library(clustMixType)
 library(stats)
+library(dplyr)
 
 ########---------------------data loading and cleaning:
 #from https://datahub.io/machine-learning/soybean#resource-soybean
@@ -17,7 +18,8 @@ head(soy)
 str(soy)
 summary(soy)
 soy = na.omit(soy)
-
+soy_set <- soy[,-36] 
+glimpse(soy_set)
 
 #from https://datahub.io/machine-learning/credit-approval#resource-credit-approval
 #credit dataset, contains both categorical and numerical features
@@ -26,6 +28,8 @@ head(credit)
 str(credit)
 summary(credit)
 credit = na.omit(credit)
+credit_set <- credit[,1:15]
+str(credit_set)
 
 #################################################################
 ########---------------------kmodes - clustering categorical data
@@ -143,8 +147,10 @@ kmodes_manually <- function(dataset, modes_count = 2, method = 1, max_iter = 100
 cluster_kmodes = kmodes_manually(dataset = soy[,-ncol(soy)])
 
 #or use library "klaR" with function kmodes:
-c_soy = kmodes(soy, 10)
+c_soy = kmodes(soy_set, 10)
+c_soy
 c_soy$cluster
+
 
 #evaluate the clusters somehow, vizualize the clustering measures based on the number of clusters
 #for each cluster calculate its most common values and put them in the table
@@ -274,6 +280,7 @@ kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100
   modes[,number] = apply(modes[,number], 2, as.numeric)
   return(list(assigned_clusters, modes))
 }
+
 clust_kproto = kproto_manually(credit[,-ncol(credit)])
 
 #or use library "clustMixType" with function kproto:
