@@ -19,7 +19,7 @@ library(randomcoloR)
 ########---------------------data loading and cleaning: ####
 #from https://datahub.io/machine-learning/soybean#resource-soybean
 #soy datatset, contains only categorical features:
-soy = read.csv("soybean_csv.csv", sep = ",", header = T, stringsAsFactors = T, na.strings = c("", "NA"))
+soy = read.csv("soybean_csv.csv", sep = ",", header = T, stringsAsFactors = F, na.strings = c("", "NA"))
 head(soy)
 str(soy)
 summary(soy)
@@ -38,7 +38,7 @@ nlevels(unique(soy_set_class))
 
 #from https://datahub.io/machine-learning/credit-approval#resource-credit-approval
 #credit dataset, contains both categorical and numerical features
-credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = T, na.strings = c("", "NA"))
+credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = F, na.strings = c("", "NA"))
 head(credit)
 str(credit)
 summary(credit)
@@ -219,7 +219,7 @@ kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100
   #   dataset: dataset to cluster
   #         * columns of type "double" or "interger" are treated as real numbers
   #         * columns of other types are treated as categories  
-  #   modes_count: number of clusters to cluster the dataset
+  #   cluster_count: number of clusters to cluster the dataset
   #   method: method of cluster modes initialization, values: 1, 2
   #         * 1 = select first "modes_count" distinct
   #         * 2 = apply the smart selection algoritm 2 from the paper
@@ -355,11 +355,6 @@ for (i in 1:10) {
   c_cred_loop <- kproto(data = credit_set, k = i, lambda = 940941)
 }
 
-
-bind <- cbind(credit_set_class, c_cred$cluster)
-
-credit_set_class <- replace(credit_set_class, c("+", "-"))
-
 #nejake vizualiace a zavery, zhodnoceni kvality clusteru, nalezeni optimalniho poctu clusteru
 #hodnota gamma/lamda jestli dava smysl apod.
 
@@ -403,21 +398,33 @@ table(soy_set$class)
 #### Credit Data Set ####
 credit_set_testset_1 <- credit_set[sample(1:dim(credit_set)[1]),]
 credit_set_testset_1_class <- credit_set$class
-credit_set_testset_1 <- credit_set_testset_1[,-16]
 
-c_credit_set_testset_1 <- kproto(x = credit_set_testset_1, k = 2)
+c_credit_set_testset_1 <- kproto(x = credit_set_testset_1[,-16], k = 2)
+credit_set_testset_1$cluster <- c_credit_set_testset_1$cluster
+table(credit_set_testset_1$class, credit_set_testset_1$cluster)
+maxSumDiagonal(table(credit_set_testset_1$class, credit_set_testset_1$cluster))/dim(credit_set_testset_1)[1]
 
+maxSumDiagonal <- function(df) {
+  ifelse(sum(as.matrix(df)[1,1], as.matrix(df)[2,2]) > sum(as.matrix(df)[1,2], as.matrix(df)[2,1]),
+         sum(as.matrix(df)[1,1], as.matrix(df)[2,2]),
+         sum(as.matrix(df)[1,2], as.matrix(df)[2,1])
+  )
+}
 
-credit_results <- data.frame(matrix(NA, ncol = 2, nrow = 100))
+credit_results <- data.frame(matrix(NA, ncol = 1, nrow = 100))
 for(i in 1:100) {
   credit_set_testset <- credit_set[sample(1:dim(soy_set)[1]),]
-  credit_set_testset <- credit_set[,-36]
-  c_credit_testset <- kproto(x = credit_set_testset, k = 2, iter.max = 100)
-  for(j in 1:2) {
-    credit_results[i,j] <- c_credit_testset$size[[j]]
-  }
+  c_credit_testset <- kproto(x = credit_set_testset[,-16], k = 2, iter.max = 100)
+  credit_set_testset$cluster <- c_credit_testset$cluster
+  credit_results[i,] <- maxSumDiagonal(table(credit_set_testset$class, credit_set_testset$cluster))/dim(credit_set_testset)[1]
 }
-table(credit_set$class)
-unique(credit_results)
-length(unique(credit_results$X1))
+
+credit_results_manually <- data.frame(matrix(NA, ncol = 1, nrow = 100))
+for(i in 1:100) {
+  credit_set_testset <- credit_set[sample(1:dim(soy_set)[1]),]
+  c_credit_testset <- kproto_manually(dataset = credit_set_testset[,-16], cluster_count = 2, max_iter = 100, method = 1,gamma = 1)
+  credit_set_testset$cluster <- c_credit_testset$cluster
+  credit_results_manually[i,] <- maxSumDiagonal(table(credit_set_testset$class, credit_set_testset$cluster))/dim(credit_set_testset)[1]
+}
+
 
