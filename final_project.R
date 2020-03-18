@@ -214,7 +214,7 @@ scale(soy_set)
 #### Credit Data Set ####
 ####---------------------kproto - clustering both numerical and categorical features ####
 #create kproto_manually:
-kproto_manually = function(dataset, cluster_count = 2, gamma = 1, max_iter = 100, method = 1){
+kproto_manually = function(dataset, modes_count = 2, gamma = 1, max_iter = 100, method = 1){
   #arguments are:
   #   dataset: dataset to cluster
   #         * columns of type "double" or "interger" are treated as real numbers
@@ -418,11 +418,11 @@ for(i in 1:100) {
   credit_set_testset$cluster <- c_credit_testset$cluster
   credit_results[i,] <- maxSumDiagonal(table(credit_set_testset$class, credit_set_testset$cluster))/dim(credit_set_testset)[1]
 }
-
+kproto_manually(credit_set_testset_1[,-16])
 credit_results_manually <- data.frame(matrix(NA, ncol = 1, nrow = 100))
 for(i in 1:100) {
   credit_set_testset <- credit_set[sample(1:dim(soy_set)[1]),]
-  c_credit_testset <- kproto_manually(dataset = credit_set_testset[,-16], cluster_count = 2, max_iter = 100, method = 1,gamma = 1)
+  c_credit_testset <- kproto_manually(dataset = credit_set_testset[,-16], modes_count = 2, max_iter = 100, method = 1,gamma = 1)
   credit_set_testset$cluster <- c_credit_testset$cluster
   credit_results_manually[i,] <- maxSumDiagonal(table(credit_set_testset$class, credit_set_testset$cluster))/dim(credit_set_testset)[1]
 }
