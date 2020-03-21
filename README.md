@@ -10,8 +10,11 @@ The k modes algorithm is designed for clustering data with only categorical vari
 
 where
 
-<img src="https://render.githubusercontent.com/render/math?math=d(X,Y) = delta(x_i,y_i) = 0 if x_i = y_i and 1 otherwise"> if
+<img src="https://render.githubusercontent.com/render/math?math=d(X,Y) = \delta(x_i,y_i) = 0 "> if
 <img src="https://render.githubusercontent.com/render/math?math= x_i = y_i"> 1 otherwise
+
+### K-proto
+The K-proto algorithm encompasses the same steps as the K-modes and K-mean algorithm, again, except for the disimilarity meassure.
 
 ## Data
 
