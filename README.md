@@ -10,7 +10,7 @@ The k modes algorithm is designed for clustering data with only categorical vari
 
 where
 
-<img src="https://render.githubusercontent.com/render/math?math= \delta(x_i,y_i) = 0 "> if
+<img src="https://render.githubusercontent.com/render/math?math= \delta (x_i,y_i)=0"> if
 <img src="https://render.githubusercontent.com/render/math?math=x_i=y_i"> and  1 otherwise
 
 ### K-proto
