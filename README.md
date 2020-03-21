@@ -5,9 +5,13 @@ The aim of this project is to replicate paper 'Extensions to the k-Means Algorit
 ## Description of algorithms
 ### K-modes
 The k modes algorithm is designed for clustering data with only categorical variables. The algorithm is very similar to kmeans algoritm except for the modification of disimilarity meassure. Instead of Euclidean distance the algorithm uses Hamming distance as a meassure of dissimilarity. The Hamming distance for two observations is given as a number of components for which the categories between the two observations differ. Formally:
+
 <img src="https://render.githubusercontent.com/render/math?math=d(X,Y) = \sum_i_{1_n} \delta(x_i,y_i)">
+
 where
-<img src="https://render.githubusercontent.com/render/math?math=d(X,Y) = delta(x_i,y_i) = 0 if x_i = y_i and 1 otherwise">
+
+<img src="https://render.githubusercontent.com/render/math?math=d(X,Y) = delta(x_i,y_i) = 0 if x_i = y_i and 1 otherwise"> if
+<img src="https://render.githubusercontent.com/render/math?math= x_i = y_i"> 1 otherwise
 
 ## Data
 
