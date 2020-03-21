@@ -9,6 +9,7 @@ $d(X,Y) = \sum_i_{1_n} \delta(x_i,y_i)$
 where
 \delta(x_i,y_i) = 0 if x_i = y_i and 1 otherwise.
 
+<img src="https://render.githubusercontent.com/render/math?math=e^{i \pi} = -1">
 
 
 ## Data
