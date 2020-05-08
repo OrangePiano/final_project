@@ -710,13 +710,16 @@ cr_results_gamma_table_m2 <- df_values_count %>%
   left_join(cr_g_m2_11, by = "accuracy") %>%
   left_join(cr_g_m2_12, by = "accuracy") %>%
   left_join(cr_g_m2_13, by = "accuracy") %>%
-  left_join(cr_g_m2_14, by = "accuracy") 
+  left_join(cr_g_m2_14, by = "accuracy") %>%
+  as.data.frame()
 cr_results_gamma_table_m2[is.na(cr_results_gamma_table_m2)] <- ''
 cr_results_gamma_table_m2
-#stargazer(cr_results_gamma_table)
-
-cr_results_gamma_table_m1
+names(cr_results_gamma_table_m2) <- c("accuracy", gamma_vector)
 cr_results_gamma_table_m2
 
+stargazer(as.data.frame(cr_results_gamma_table_m1), summary  = FALSE, title = "Method 1", digits = 2)
+stargazer(as.data.frame(cr_results_gamma_table_m1), summary  = TRUE, title = "Method 1", digits = 2)
+stargazer(as.data.frame(cr_results_gamma_table_m2), summary  = FALSE, title = "Method 2", digits = 2)
+stargazer(as.data.frame(cr_results_gamma_table_m2), summary  = TRUE, title = "Method 2", digits = 2)
 
 
