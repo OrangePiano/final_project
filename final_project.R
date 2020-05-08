@@ -405,7 +405,7 @@ str(credit_set)
 credit_set <- credit_set %>% mutate_if(is.numeric, scale)
 
 ### Clusttering Soy Dataset ####
-# Defining a function to calculate the accuracy:
+# Defining a function to calculate the accuracy using Hungarian Algorithm
 soyAccuracy <- function(tbl_matrix){
   sum <- 0
   c_a <- solve_LSAP(table_matrix, maximum = TRUE)
@@ -414,29 +414,28 @@ soyAccuracy <- function(tbl_matrix){
   }
   return(sum/nrow(soy_testset))
 }
-# using klaR::kmodes
+
 # creating data frame
 soy_cl_ttlwithin <- data.frame(matrix(ncol = 2, nrow = 20))
 names(soy_cl_ttlwithin) <- c("clusters_number", "within_diff")
 soy_cl_ttlwithin$clusters_number <- 1:20
 
-# Using visualization 
-# the number of clusters recommmended is 4, which corresponds to our number of clusters
-
+# Using visualization to see the numbers of recommended modes
 for (i in 1:20) {
   clust_soy_loop <- kmodes(soy_set, i)
   soy_cl_ttlwithin[i,2] <- sum(clust_soy_loop$withindiff)
 }
 str(soy_cl_ttlwithin)
 plot(soy_cl_ttlwithin, type = "b", ylab = "Total within difference", xlab = "Number of clusters") 
-# based on the plot, the flex is at 5
+# The flex point is at approximately 4 and 5
 
 #### Replication of Soy Dataset ####
-#### asFactors for kmodes ####
+#### using klaR::kmodes to replicate the paper #####
+# asFactors for kmodes #
 soy_set_asFactors <- mutate_if(soy_set, is.character, as.factor)
 soy_testset <- soy_set_asFactors[sample(1:nrow(soy_set_asFactors)),]
 str(soy_testset[,-ncol(soy_testset)])
-#table(soy_set_testset$class)
+table(soy_testset$class)
 clust_soy_testset <- kmodes(data = soy_testset[-ncol(soy_testset)], modes = 4)
 
 # soy set testset to design the function
@@ -446,8 +445,6 @@ table_matrix <- as.matrix(table(soy_testset$class, soy_testset$cluster))
 table_matrix
 solve_LSAP(table_matrix, maximum = TRUE)
 soyAccuracy(table_matrix)
-kmodes_measures(clust_soy_testset, soy_testset$cluster)
-
 
 # loop to replicate the results
 soy_results <- data.frame(matrix(NA, ncol = 1, nrow = 10))
@@ -520,7 +517,7 @@ par(mfrow=c(1,1))
 
 #### Clusttering Credit Data Set ####
 # defining a function to later find the highest accuracy from the confusion matrix 
-maxSumDiagonal <- function(df) {
+crAccuracy <- function(df) {
   ifelse(sum(as.matrix(df)[1,1], as.matrix(df)[2,2]) > sum(as.matrix(df)[1,2], as.matrix(df)[2,1]),
          sum(as.matrix(df)[1,1], as.matrix(df)[2,2]),
          sum(as.matrix(df)[1,2], as.matrix(df)[2,1])
@@ -530,8 +527,8 @@ maxSumDiagonal <- function(df) {
 # NOTE: Using these optimization funciton from the clustMixType takes a lot of time
 #c_cred_tau_opt <- tau_kproto(data = credit_set, k = 2:5, nstart = 5, verbose = FALSE)
 #c_cred_sil_opt <- silhouette_kproto(data = credit_set, k = 2:5, nstart = 5, verbose = FALSE)
-#str(c_cred_tau_opt) # The test take a long time to achieve the results, we got 5 clusters
-#str(c_cred_sil_opt) # The test take a long time to achieve the results, we got 4 clusters
+#str(c_cred_tau_opt) # The test take a long time to achieve the results, we got recommended 5 clusters
+#str(c_cred_sil_opt) # The test take a long time to achieve the results, we got recommended 4 clusters
 
 # credit_set_asFactors for kproto function
 cr_set_asFactors <- mutate_if(credit_set, is.character, as.factor)
@@ -539,14 +536,15 @@ str(cr_set_asFactors)
 cr_asF_testset <- cr_set_asFactors[sample(1:nrow(cr_set_asFactors)),]
 str(cr_asF_testset)
 cr_cl <- kproto(cr_asF_testset[,-ncol(cr_asF_testset)], k = 2)
-maxSumDiagonal(table(cr_asF_testset$class,cr_cl$cluster))/nrow(cr_asF_testset)
+crAccuracy(table(cr_asF_testset$class,cr_cl$cluster))/nrow(cr_asF_testset)
 
+# looping results
 cr_results <- data.frame(matrix(NA, nrow = 10, ncol = 1))
 names(cr_results) <- "accuracy"
 for (i in 1:100) {
   cr_asF_testset <- cr_set_asFactors[sample(1:nrow(cr_set_asFactors)),]
   cr_cl <- kproto(cr_asF_testset[,-ncol(cr_asF_testset)], k = 2)
-  cr_results[i,1] <- maxSumDiagonal(table(cr_asF_testset$class,cr_cl$cluster))/nrow(cr_asF_testset)
+  cr_results[i,1] <- crAccuracy(table(cr_asF_testset$class,cr_cl$cluster))/nrow(cr_asF_testset)
 }
 
 # histogram of the accuracy
@@ -560,7 +558,7 @@ cr_testset <- credit_set[sample(1:nrow(credit_set)),]
 cr_cl_m <- kproto_fit(cr_testset[,-ncol(cr_testset)], modes_count = 2, gamma = 0, max_iter = 100, method = 1)
 cr_testset$cluster <- cr_cl_m[[1]]
 table(cr_testset$class, cr_testset$cluster)
-maxSumDiagonal(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
+crAccuracy(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
 
 #method 1
 cr_results_m1 <- data.frame(matrix(NA, ncol = 1, nrow = 100))
@@ -569,7 +567,7 @@ for(i in 1:100) {
   cr_testset <- credit_set[sample(1:nrow(credit_set)),]
   cr_cl_m <- kproto_fit(cr_testset[,-ncol(cr_testset)], modes_count = 2, gamma = 0, max_iter = 100, method = 1)
   cr_testset$cluster <- cr_cl_m[[1]]
-  cr_results_m1[i,1] <- maxSumDiagonal(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
+  cr_results_m1[i,1] <- crAccuracy(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
 }
 unique(cr_results_m1$accuracy)
 hist(cr_results_m1$accuracy, breaks = 20)
@@ -581,19 +579,81 @@ for(i in 1:100) {
   cr_testset <- credit_set[sample(1:nrow(credit_set)),]
   cr_cl_m <- kproto_fit(cr_testset[,-ncol(cr_testset)], modes_count = 2, gamma = 0, max_iter = 100, method = 2)
   cr_testset$cluster <- cr_cl_m[[1]]
-  cr_results_m2[i,1] <- maxSumDiagonal(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
+  cr_results_m2[i,1] <- crAccuracy(table(cr_testset$class, cr_testset$cluster))/nrow(cr_testset)
 }
 unique(cr_results_m2$accuracy)
 hist(cr_results_m2$accuracy)
 stargazer(cbind(summary(cr_results_m1), summary(cr_results_m2)))
 
-#testing gamma
-cr_results_mg <- data.frame(matrix(NA, ncol = 9, nrow = 100))
-names(cr_results_mg)
+#testing gamma loop method 1
+cr_results_g_m1 <- data.frame(matrix(NA, ncol = 9, nrow = 100))
+names(cr_results_g_m1)
+gamma_vector <- c("0","0.5","0.7","0.9","1","1.1","1.2","1.3","1.4")
+names(cr_results_g_m1) <- gamma_vector
+head(cr_results_g_m1)
+for(j in gamma_vector) {
+  for (i in 1:100) {
+    cr_testset <- credit_set[sample(1:nrow(credit_set)), ]
+    cr_cl_m <- kproto_fit(cr_testset[, -ncol(cr_testset)], modes_count = 2, gamma = as.numeric(j),
+        max_iter = 100,method = 1
+        )
+    cr_testset$cluster <- cr_cl_m[[1]]
+    cr_results_g_m1[i, j] <-
+      round(crAccuracy(table(cr_testset$class, cr_testset$cluster)) / nrow(cr_testset),2)
+  }
+}
+
+cr_results_g_m1_formatted <- cr_results_g_m1
+cr_results_g_m1_formatted[cr_results_g_m1_formatted <= 0.71] <- 0.71
+cr_results_g_m1_formatted[cr_results_g_m1_formatted >= 0.83] <- 0.83
+cr_results_g_m1_formatted <- cr_results_g_m1_formatted %>%
+  mutate_all(as.character)
+
+cr_results_values <- c(0.83, 0.82, 0.81, 0.80, 0.79, 0.78, 0.77, 0.76, 0.75, 0.74, 0.73, 0.72, 0.71)
+df_values_count_m1 <- data.frame(matrix(NA, nrow = 13, ncol = 1))
+names(df_values_count_m1) <- "accuracy"
+df_values_count_m1$accuracy <- cr_results_values
+
+cr_g_m1_0 <- as.data.frame(table(cr_results_g_m1_formatted$'0', dnn =list("accuracy")), responseName = '0')
+cr_g_m1_0$accuracy <- as.numeric(levels(cr_g_m1_0$accuracy))
+cr_g_m1_05 <- as.data.frame(table(cr_results_g_m1_formatted$'0.5', dnn =list("accuracy")), responseName = '0.5')
+cr_g_m1_05$accuracy <- as.numeric(levels(cr_g_m1_05$accuracy))
+cr_g_m1_07 <- as.data.frame(table(cr_results_g_m1_formatted$'0.7', dnn =list("accuracy")), responseName = '0.7')
+cr_g_m1_07$accuracy <- as.numeric(levels(cr_g_m1_07$accuracy))
+cr_g_m1_09 <- as.data.frame(table(cr_results_g_m1_formatted$'0.9', dnn =list("accuracy")), responseName = '0.9')
+cr_g_m1_09$accuracy <- as.numeric(levels(cr_g_m1_09$accuracy))
+cr_g_m1_1 <- as.data.frame(table(cr_results_g_m1_formatted$'1', dnn =list("accuracy")), responseName = '1')
+cr_g_m1_1$accuracy <- as.numeric(levels(cr_g_m1_1$accuracy))
+cr_g_m1_11 <- as.data.frame(table(cr_results_g_m1_formatted$'1.1', dnn =list("accuracy")), responseName = '1.1')
+cr_g_m1_11$accuracy <- as.numeric(levels(cr_g_m1_11$accuracy))
+cr_g_m1_12 <- as.data.frame(table(cr_results_g_m1_formatted$'1.2', dnn =list("accuracy")), responseName = '1.2')
+cr_g_m1_12$accuracy <- as.numeric(levels(cr_g_m1_12$accuracy))
+cr_g_m1_13 <- as.data.frame(table(cr_results_g_m1_formatted$'1.3', dnn =list("accuracy")), responseName = '1.3')
+cr_g_m1_13$accuracy <- as.numeric(levels(cr_g_m1_13$accuracy))
+cr_g_m1_14 <- as.data.frame(table(cr_results_g_m1_formatted$'1.4', dnn =list("accuracy")), responseName = '1.4')
+cr_g_m1_14$accuracy <- as.numeric(levels(cr_g_m1_14$accuracy))
+
+cr_results_gamma_table_m1 <- df_values_count_m1 %>% 
+  left_join(cr_g_m1_0, by = "accuracy") %>%
+  left_join(cr_g_m1_05, by = "accuracy") %>%
+  left_join(cr_g_m1_07, by = "accuracy") %>%
+  left_join(cr_g_m1_09, by = "accuracy") %>%
+  left_join(cr_g_m1_1, by = "accuracy") %>%
+  left_join(cr_g_m1_11, by = "accuracy") %>%
+  left_join(cr_g_m1_12, by = "accuracy") %>%
+  left_join(cr_g_m1_13, by = "accuracy") %>%
+  left_join(cr_g_m1_14, by = "accuracy") 
+cr_results_gamma_table_m1[is.na(cr_results_gamma_table_m1)] <- ''
+cr_results_gamma_table_m1
+#stargazer(cr_results_gamma_table)
+
+#testing gamma loop method 2
+cr_results_g_m2 <- data.frame(matrix(NA, ncol = 9, nrow = 100))
+names(cr_results_g_m2)
 gamma_vector <- c("0","0.5","0.7","0.9","1","1.1","1.2","1.3","1.4")
 as.numeric(gamma_vector[3])
-names(cr_results_mg) <- gamma_vector
-head(cr_results_mg)
+names(cr_results_g_m2) <- gamma_vector
+head(cr_results_g_m2)
 for(j in gamma_vector) {
   for (i in 1:100) {
     cr_testset <- credit_set[sample(1:nrow(credit_set)), ]
@@ -606,9 +666,57 @@ for(j in gamma_vector) {
         method = 2
       )
     cr_testset$cluster <- cr_cl_m[[1]]
-    cr_results_mg[i, j] <-
-      maxSumDiagonal(table(cr_testset$class, cr_testset$cluster)) / nrow(cr_testset)
+    cr_results_g_m2[i, j] <-
+      round(crAccuracy(table(cr_testset$class, cr_testset$cluster)) / nrow(cr_testset),2)
   }
 }
-summary(cr_results_mg)
-hist(cr_results_mg)
+
+cr_results_g_m2_formatted <- cr_results_g_m2
+cr_results_g_m2_formatted[cr_results_g_m2_formatted <= 0.71] <- 0.71
+cr_results_g_m2_formatted[cr_results_g_m2_formatted >= 0.83] <- 0.83
+cr_results_g_m2_formatted <- cr_results_g_m2_formatted %>%
+  mutate_all(as.character)
+
+cr_results_values <- c(0.83, 0.82, 0.81, 0.80, 0.79, 0.78, 0.77, 0.76, 0.75, 0.74, 0.73, 0.72, 0.71)
+df_values_count <- data.frame(matrix(NA, nrow = 13, ncol = 1))
+names(df_values_count) <- "accuracy"
+df_values_count$accuracy <- cr_results_values
+
+cr_g_m2_0 <- as.data.frame(table(cr_results_g_m2_formatted$'0', dnn =list("accuracy")), responseName = '0')
+cr_g_m2_0$accuracy <- as.numeric(levels(cr_g_m2_0$accuracy))
+cr_g_m2_05 <- as.data.frame(table(cr_results_g_m2_formatted$'0.5', dnn =list("accuracy")), responseName = '0.5')
+cr_g_m2_05$accuracy <- as.numeric(levels(cr_g_m2_05$accuracy))
+cr_g_m2_07 <- as.data.frame(table(cr_results_g_m2_formatted$'0.7', dnn =list("accuracy")), responseName = '0.7')
+cr_g_m2_07$accuracy <- as.numeric(levels(cr_g_m2_07$accuracy))
+cr_g_m2_09 <- as.data.frame(table(cr_results_g_m2_formatted$'0.9', dnn =list("accuracy")), responseName = '0.9')
+cr_g_m2_09$accuracy <- as.numeric(levels(cr_g_m2_09$accuracy))
+cr_g_m2_1 <- as.data.frame(table(cr_results_g_m2_formatted$'1', dnn =list("accuracy")), responseName = '1')
+cr_g_m2_1$accuracy <- as.numeric(levels(cr_g_m2_1$accuracy))
+cr_g_m2_11 <- as.data.frame(table(cr_results_g_m2_formatted$'1.1', dnn =list("accuracy")), responseName = '1.1')
+cr_g_m2_11$accuracy <- as.numeric(levels(cr_g_m2_11$accuracy))
+cr_g_m2_12 <- as.data.frame(table(cr_results_g_m2_formatted$'1.2', dnn =list("accuracy")), responseName = '1.2')
+cr_g_m2_12$accuracy <- as.numeric(levels(cr_g_m2_12$accuracy))
+cr_g_m2_13 <- as.data.frame(table(cr_results_g_m2_formatted$'1.3', dnn =list("accuracy")), responseName = '1.3')
+cr_g_m2_13$accuracy <- as.numeric(levels(cr_g_m2_13$accuracy))
+cr_g_m2_14 <- as.data.frame(table(cr_results_g_m2_formatted$'1.4', dnn =list("accuracy")), responseName = '1.4')
+cr_g_m2_14$accuracy <- as.numeric(levels(cr_g_m2_14$accuracy))
+
+cr_results_gamma_table_m2 <- df_values_count %>% 
+  left_join(cr_g_m2_0, by = "accuracy") %>%
+  left_join(cr_g_m2_05, by = "accuracy") %>%
+  left_join(cr_g_m2_07, by = "accuracy") %>%
+  left_join(cr_g_m2_09, by = "accuracy") %>%
+  left_join(cr_g_m2_1, by = "accuracy") %>%
+  left_join(cr_g_m2_11, by = "accuracy") %>%
+  left_join(cr_g_m2_12, by = "accuracy") %>%
+  left_join(cr_g_m2_13, by = "accuracy") %>%
+  left_join(cr_g_m2_14, by = "accuracy") 
+cr_results_gamma_table_m2[is.na(cr_results_gamma_table_m2)] <- ''
+cr_results_gamma_table_m2
+#stargazer(cr_results_gamma_table)
+
+cr_results_gamma_table_m1
+cr_results_gamma_table_m2
+
+
+
