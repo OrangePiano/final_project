@@ -1,6 +1,3 @@
-#OVERLEAF DOCUMENT IS HERE:
-#https://www.overleaf.com/4124683755yxjnvhysywdt
-
 #download the required packages:
 #install.packages("klaR")
 #install.packages("clustMixType")
@@ -139,8 +136,6 @@ kmodes_fit <- function(dataset, modes_count = 4, method = 1, max_iter = 100){
   return(out)
 }
 
-#cluster_kmodes = kmodes_fit(dataset = soy[1:400,-ncol(soy)], method = 2)
-
 # >>> Define function kmodes_predict to be able to assign data to given centroids
 # function returns index of closest cluster to each row in dataset
 kmodes_predict <-function(dataset, modes){
@@ -151,8 +146,6 @@ kmodes_predict <-function(dataset, modes){
   prediction = apply(dataset, 1, closest_mode, modes = modes)
   return(prediction)
 }
-#predicted_kmodes = kmodes_predict(dataset = soy[401:683,-ncol(soy)], cluster_kmodes[[2]])
-#table(predicted_kmodes, soy[401:683,ncol(soy)])
 
 # >>> Define function kmodes_measures to be able to assess 'quality' of clusters
 # inputs are 'data', their 'labels' (index of cluster) and the actual cluster centers 'modes'
@@ -304,8 +297,6 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
   return(out)
 }
 
-#clust_kproto = kproto_fit(credit[,-ncol(credit)])
-
 # >>> Define function kproto_predict to be able to assign data to given centroids
 # function returns index of closest cluster to each row in dataset
 kproto_predict = function(dataset, modes, gamma=1){# use the same gamma as when fitting!
@@ -322,11 +313,6 @@ kproto_predict = function(dataset, modes, gamma=1){# use the same gamma as when 
   
   return(prediction)
 }
-
-#predicted_kproto = kproto_predict(credit[,-ncol(credit)],clust_kproto[[2]])
-
-# function that finds total within sum of squares for given 'data', their labels
-# 'clusters' and the actual cluster centers 'modes
 
 # >>> Define function kproto_measures to be able to assess 'quality' of clusters
 # inputs are 'data', their 'labels' (index of cluster), the actual cluster centers 'modes', gamma
