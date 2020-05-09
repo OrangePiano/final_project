@@ -18,16 +18,19 @@ library(dendextend)
 library(randomcoloR)
 library(stargazer)
 
-#### Function definiton ####
-##### K-modes #####
+#################################################################################
+#### -------------  PART 1, Definition of functions \ algorithms ----------- ####
+#################################################################################
 
-#----------define useful functions for the algorithm:
-#function that finds distance between two rows of categorical variables:
+##### ---------------------------  K-modes -------------------------------- #####
+
+# >>> define useful functions for the algorithm:
+# function that finds distance between two rows of categorical variables:
 cat_dist = function(x,y){
   sum(x != y)
 }  
 
-#function that finds the index of closest mode from modes defining clusters to the row x:
+# function that finds the index of closest mode from modes defining clusters to the row x:
 closest_mode = function(x, modes){
   distances = apply(modes, MARGIN = 1, cat_dist, y = x)
   index = which(distances==min(distances))
@@ -35,56 +38,55 @@ closest_mode = function(x, modes){
   return(index)
 }
 
-#function that finds the most frequent string in a column:
+# function that finds the most frequent string in a column:
 find_mode = function(x){
   ta = table(x)
   tam = max(ta)
   mod = names(ta)[ta == tam]
-  mod = mod[1] #select only one mode
+  mod = mod[1] # select only one mode
   return(mod)
 }
 
-#-----------end of useful functions
-
+# >>> define the kmodes algorithm with the helper functions as function kmodes_fit:
 kmodes_fit <- function(dataset, modes_count = 4, method = 1, max_iter = 100){
-  #arguments are:
+  # arguments are:
   #   dataset: dataset to cluster, all columns are treated as categories (characters)
   #   modes_count: number of clusters to cluster the dataset
   #   method: method of cluster modes initialization, values: 1, 2
-  #         * 1 = select first "modes_count" distinct
+  #         * 1 = select first "modes_count" distinct rows from the dataset as initial modes
   #         * 2 = apply the smart selection algoritm 2 from the paper
   #   max_iter: maximum number of iterations when the algorithm does no converge
-  #function returns: list
+  # function returns: list
   #   list[1]: vector of numbers with an index of each cluster
   #   list[2]: dataframe, each row represents one cluster and its index corespond to the returned indices of clusters
   
-  #convert the dataset into matrix of characters (it was simplier than to work with factors)
+  # convert the dataset into matrix of characters
   dataset = apply(dataset, MARGIN = 2, FUN = as.character)
   dataset = as.matrix(dataset)
   
-  #1. Select "modes_count" initial modes, one for each cluster.
-  #1.a First method of selection:
+  # 1. Select "modes_count" initial modes, one for each cluster.
+  # 1.a First method of selection:
   if(method == 1){
     nondupl = dataset[!duplicated(dataset),]
     modes = nondupl[1:modes_count,]
   }
-  #1.b Second method of selection:
+  # 1.b Second method of selection:
   if(method == 2){
     #initialize the object of modes:
     modes = dataset[1:modes_count,]
     
-    #define a last useful function :) :
-    k_most_frequent = function(x,k){ #function that finds up to k most frequent categories
-      ta = table(x)                  #very similar to "find_mode_function" but includes slower sort function
+    # define a last useful function :) :
+    k_most_frequent = function(x,k){ # function that finds up to k most frequent categories
+      ta = table(x)                  # very similar to "find_mode_function" but includes slower sort function
       tas = sort(ta, decreasing = T)
       k = min(length(tas),k)
       k_top = names(tas)[1:k]
       return(k_top)
     }
-    #get a list of up to k the most frequent characters for each column
+    # get a list of up to k the most frequent characters for each column
     values = lapply(data.frame(dataset,stringsAsFactors=F), k_most_frequent, k=modes_count)
     
-    #repeat until find a suitable solution:
+    # repeat until find a suitable solution:
     repeat{
       for(i in 1:length(values)){
         modes[,i] = sample(values[[i]], size = modes_count, replace = T)
@@ -97,39 +99,41 @@ kmodes_fit <- function(dataset, modes_count = 4, method = 1, max_iter = 100){
     }
   }  
   
-  assigned_clusters_old = c(rep(0, nrow(dataset))) #object to store past values of clusters
+  # 2. Perform the iterations:
+  assigned_clusters_old = c(rep(0, nrow(dataset))) # object to store past values of clusters
   
   iter = 1
   repeat{
-    #2a. Allocate an object to the cluster whose mode is the nearest to it according to (5).
+    # 2a. Allocate an object to the cluster whose mode is the nearest to it according to (5).
     assigned_clusters = apply(dataset, MARGIN = 1, closest_mode, modes = modes)
     
-    #2b. Update the mode of the cluster after each allocation according to Theorem 1.
+    # 2b. Update the mode of the cluster after each allocation (according to Theorem 1 from the paper).
     for(i in 1:modes_count){
-      if(sum(assigned_clusters==i) > 1){ #must be at least two rows, otherwise apply raises error
+      if(sum(assigned_clusters==i) > 1){ # must be at least two rows, otherwise apply raises error
         new_mode = t(as.matrix(apply(dataset[assigned_clusters==i,], MARGIN = 2, find_mode)))
         modes[i,] = new_mode  
-      } else if (sum(assigned_clusters==i) == 1) { #because function apply does not handle single row
+      } else if (sum(assigned_clusters==i) == 1) { # because function apply does not handle a single row
         modes[i,] = dataset[assigned_clusters==i,]
       }
     }
     
     iter = iter+1
     
-    #stop if there is no change in clusters:
+    # stop if there is no change in clusters:
     if(all(assigned_clusters == assigned_clusters_old)){
       print(paste("Algorithm converged sucessfully after",iter,"iterations"))
       break
     }
-    #stop if max_iter is reached:
+    # stop if max_iter is reached:
     if(iter == max_iter){
       print("Algorithm failed to converge")
     }
-    #save the old clusters to verify convergence:
+    # save the old clusters to verify convergence:
     assigned_clusters_old = assigned_clusters
     
   }
   
+  # 3. Return the results
   out = list(assigned_clusters, as.data.frame(modes, stringsAsFactors = F))
   names(out) = c('labels', 'centers')
   return(out)
@@ -137,7 +141,8 @@ kmodes_fit <- function(dataset, modes_count = 4, method = 1, max_iter = 100){
 
 #cluster_kmodes = kmodes_fit(dataset = soy[1:400,-ncol(soy)], method = 2)
 
-#function that returns index of closest cluster to each row in dataset
+# >>> Define function kmodes_predict to be able to assign data to given centroids
+# function returns index of closest cluster to each row in dataset
 kmodes_predict <-function(dataset, modes){
   
   dataset = apply(dataset, MARGIN = 2, FUN = as.character)
@@ -149,11 +154,11 @@ kmodes_predict <-function(dataset, modes){
 #predicted_kmodes = kmodes_predict(dataset = soy[401:683,-ncol(soy)], cluster_kmodes[[2]])
 #table(predicted_kmodes, soy[401:683,ncol(soy)])
 
-# function that finds within sum of squares, total sum of squares, Calinski-Harabasz index (CH)
-# for given 'data', their 'labels' and the actual cluster centers 'modes'
-
+# >>> Define function kmodes_measures to be able to assess 'quality' of clusters
+# inputs are 'data', their 'labels' (index of cluster) and the actual cluster centers 'modes'
+# functions returns list with WSS - within sum of square, TSS - total sum of squares, CH - Calinski-Harabasz index
 kmodes_measures = function(data, labels, modes){
-  
+ 
   modes_count = nrow(modes)
   
   # function that finds the distance for each data point from given cluster
@@ -162,7 +167,7 @@ kmodes_measures = function(data, labels, modes){
     sum(apply(data[labels==index,], 1, cat_dist, y=modes[index,])^2)
   }
   
-  # for each index in 1 to modes count calculate its WSS and then sum it
+  # for each index in 1 to 'modes_count' calculate its WSS and then sum it
   indices = matrix(data = c(1:modes_count), nrow=modes_count)
   WSS = sum(apply(indices, 1, WSS_cluster, data=data, 
                   labels=labels, modes=modes))
@@ -179,30 +184,26 @@ kmodes_measures = function(data, labels, modes){
   return(out)
 }
 
-
-##### K-proto ####
-#--------define useful functions for the algorithm:
-#function that finds distance between two rows of categorical variables:
-
-#function that finds distance between two variables:
+##### ---------------------------  K-proto -------------------------------- #####
+# >>> define useful functions for the algorithm:
+# function that finds distance between two variables of a mixed type:
 mixed_dist = function(x, y, number, gamma){
   ED =  sum((as.numeric(x[number]) - as.numeric(y[number]))**2)**0.5
   mix = gamma * sum(x[!number] != y[!number]) + ED
   return(mix)
 }
 
-#function that finds the closest mode from given cluster modes to the x:
+# function that finds the closest mode from given cluster modes to the x:
 closest_mix_mode = function(x, modes, number, gamma){
   distances = apply(modes, MARGIN = 1, mixed_dist, y=x, number=number, gamma=gamma)
   index = which(distances==min(distances))
-  index = index[1] #to avoid multiple modes
+  index = index[1] # to avoid multiple modes
   return(index)
 }
 
-#--------end of useful functions
-
+# >>> define the kproto algorithm with the helper functions as function kproto_fit:
 kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
-  #arguments are:
+  # arguments are:
   #   dataset: dataset to cluster
   #         * columns of type "double" or "interger" are treated as real numbers
   #         * columns of other types are treated as categories  
@@ -211,30 +212,30 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
   #         * 1 = select first "modes_count" distinct
   #         * 2 = apply the smart selection algoritm 2 from the paper
   #   max_iter: maximum number of iterations when the algorithm does no converge
-  #function returns: list
+  # function returns: list
   #   list[1]: vector of numbers with an index of each cluster
   #   list[2]: dataframe, each row represents one cluster and its index corespond to the returned indices of clusters
   
-  #store position of numeric columns:
+  # store position of numeric columns:
   type = lapply(dataset, typeof)
   number = type %in% c("double","integer")
   
-  #convert data into matrix of characters
+  # convert data into matrix of characters
   dataset = apply(dataset, MARGIN = 2, FUN = as.character)
   dataset = as.matrix(dataset)
   
-  #1. Select "modes_count" initial modes, one for each cluster.
-  #1.a First method of selection:
+  # 1. Select "modes_count" initial modes, one for each cluster.
+  # 1.a First method of selection:
   if(method == 1){
     nondupl = dataset[!duplicated(dataset),]
     modes = nondupl[1:modes_count,]
   }
-  #1.b Second method of selection:
+  # 1.b Second method of selection:
   if(method == 2){
     modes = dataset[1:modes_count,]
     
-    k_most_frequent = function(x,k){ #function that finds up to k most frequent categories
-      ta = table(x)                  #very similar to "find_mode_function" but includes slower sort function
+    k_most_frequent = function(x,k){ # function that finds up to k most frequent categories
+      ta = table(x)                  # very similar to "find_mode_function" but includes slower sort function
       tas = sort(ta, decreasing = T)
       k = min(length(tas),k)
       k_top = names(tas)[1:k]
@@ -243,7 +244,7 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
     
     values = lapply(data.frame(dataset,stringsAsFactors=F), k_most_frequent, k=modes_count)
     
-    repeat{#repeat until find a suitable solution:
+    repeat{ # repeat until find a suitable solution:
       for(i in 1:length(values)){
         modes[,i] = sample(values[[i]], size = modes_count, replace = T)
       }
@@ -255,6 +256,7 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
     }
   }  
   
+  # 2. Run the iteraions:
   assigned_clusters_old = c(rep(0, nrow(dataset)))
   
   iter = 1
@@ -279,12 +281,12 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
     
     iter = iter+1
     
-    #stop if there is no change in clusters:
+    # stop if there is no change in clusters:
     if(all(assigned_clusters == assigned_clusters_old)){
       print(paste("Algorithm converged sucessfully after",iter,"iterations"))
       break
     }
-    #stop if max_iter is reached:
+    # stop if max_iter is reached:
     if(iter == max_iter){
       print("Algorithm failed to converge")
     }
@@ -293,6 +295,7 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
     
   }
   
+  # 3. Return the results
   modes = as.data.frame(modes, stringsAsFactors = F)
   modes[,number] = apply(modes[,number], 2, as.numeric)
   
@@ -303,12 +306,14 @@ kproto_fit = function(dataset, modes_count=2, gamma=1, max_iter=100, method=2){
 
 #clust_kproto = kproto_fit(credit[,-ncol(credit)])
 
-kproto_predict = function(dataset, modes, gamma=1){#use the same gamma as when fitting!
+# >>> Define function kproto_predict to be able to assign data to given centroids
+# function returns index of closest cluster to each row in dataset
+kproto_predict = function(dataset, modes, gamma=1){# use the same gamma as when fitting!
   
   type = lapply(dataset, typeof)
   number = type %in% c("double","integer")
   
-  #convert data into matrix of characters
+  # convert data into matrix of characters
   dataset = apply(dataset, MARGIN = 2, FUN = as.character)
   dataset = as.matrix(dataset)
   modes = as.matrix(modes)
@@ -322,6 +327,10 @@ kproto_predict = function(dataset, modes, gamma=1){#use the same gamma as when f
 
 # function that finds total within sum of squares for given 'data', their labels
 # 'clusters' and the actual cluster centers 'modes
+
+# >>> Define function kproto_measures to be able to assess 'quality' of clusters
+# inputs are 'data', their 'labels' (index of cluster), the actual cluster centers 'modes', gamma
+# functions returns list with: WSS - within sum of square, TSS - total sum of squares, CH - Calinski-Harabasz index
 kproto_meassures = function(data, labels, modes, gamma){
   
   modes_count = nrow(modes)
@@ -356,6 +365,10 @@ kproto_meassures = function(data, labels, modes, gamma){
   return(out)
 }
 
+#################################################################################
+#### -------------  PART 2, Data loading, replication of results ----------- ####
+#################################################################################                                 
+                                   
 ####---------------------data loading and cleaning:
 #### Loading and Cleaning Sey Dataset ####
 #from https://datahub.io/machine-learning/soybean#resource-soybean
