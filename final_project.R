@@ -369,8 +369,8 @@ kproto_meassures = function(data, labels, modes, gamma){
 #### -------------  PART 2, Data loading, replication of results ----------- ####
 #################################################################################                                 
                                    
-####---------------------data loading and cleaning:
-#### Loading and Cleaning Sey Dataset ####
+#### ------------------- data loading and cleaning --------------------------####
+# >>> Loading and Cleaning Soy Dataset:
 #from https://datahub.io/machine-learning/soybean#resource-soybean
 #soy datatset, contains only categorical features:
 soy = read.csv("soybean_csv.csv", sep = ",", header = T, stringsAsFactors = F, na.strings = c("", "NA"))
@@ -397,8 +397,7 @@ for(i in 1:ncol(soy_set)){
 soy_set <- soy_set[,rv_soy]
 str(soy_set)
 
-
-##### Loading and Cleaning Credit Dataset ####
+# >>> Loading and Cleaning Credit Dataset:
 #from https://datahub.io/machine-learning/credit-approval#resource-credit-approval
 #credit dataset, contains both categorical and numerical features
 credit = read.csv("credit-approval_csv.csv", sep = ",", header = T, stringsAsFactors = F, na.strings = c("", "NA"))
@@ -417,7 +416,7 @@ str(credit_set)
 # rescaling the data set
 credit_set <- credit_set %>% mutate_if(is.numeric, scale)
 
-### Clusttering Soy Dataset ####
+#### ---------------------- Soy dataset analysis ----------------------------####
 # Defining a function to calculate the accuracy using Hungarian Algorithm
 soyAccuracy <- function(tbl_matrix){
   sum <- 0
@@ -524,11 +523,8 @@ hist(soy_results_m1$accuracy, breaks = 10, main = "method = 1", xlab = "accuracy
 hist(soy_results_m2$accuracy, breaks = 10, main = "method = 2", xlab = "accuracy")
 par(mfrow=c(1,1))
 
+#### ---------------------- Credit dataset analysis -------------------------####
 
-
-
-
-#### Clusttering Credit Data Set ####
 # defining a function to later find the highest accuracy from the confusion matrix 
 crAccuracy <- function(df) {
   ifelse(sum(as.matrix(df)[1,1], as.matrix(df)[2,2]) > sum(as.matrix(df)[1,2], as.matrix(df)[2,1]),
