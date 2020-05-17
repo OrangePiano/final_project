@@ -358,10 +358,13 @@ soy = read.csv("soybean_csv.csv", sep = ",", header = T, stringsAsFactors = F, n
 str(soy)
 # cleaning NAs from the dataset
 soy <-  na.omit(soy) 
+
 # checking unique class assinged 
 unique(soy$class) 
-# creating a vector to get the numbers based on the 
+
+# creating a vector to get the desired class comparison
 chosen_class <- c("diaporthe-stem-canker", "charcoal-rot", "rhizoctonia-root-rot", "phytophthora-rot") 
+
 # filter the data from the vector to get the numbers based on the chosen class
 soy_set <- filter(soy, class %in% chosen_class)
 # check to see that we have 4 classes in soy_set$class
@@ -425,24 +428,6 @@ plot(soy_cl_ttlwithin, type = "b", ylab = "Total within difference", xlab = "Num
 
 #### Replication of Soy Dataset ####
 #### using klaR::kmodes to replicate the paper #####
-# asFactors for kmodes #
-soy_set_asFactors <- mutate_if(soy_set, is.character, as.factor)
-soy_testset <- soy_set_asFactors[sample(1:nrow(soy_set_asFactors)),]
-str(soy_testset[,-ncol(soy_testset)])
-table(soy_testset$class)
-clust_soy_testset <- kmodes(data = soy_testset[-ncol(soy_testset)], modes = 4)
-kmodes_measures(data = soy_testset[-ncol(soy_testset)],
-                labels = clust_soy_testset$cluster,
-                modes = clust_soy_testset$modes)
-
-# soy set testset to design the function
-str(clust_soy_testset)
-soy_testset$cluster <- clust_soy_testset$cluster
-table_matrix <- as.matrix(table(soy_testset$class, soy_testset$cluster))
-table_matrix
-solve_LSAP(table_matrix, maximum = TRUE)
-soyAccuracy(table_matrix)
-
 # loop to replicate the results
 soy_results <- data.frame(matrix(NA, ncol = 2, nrow = 10))
 names(soy_results) <- c("accuracy", "CH")
@@ -471,12 +456,10 @@ table(soy_results)
 ## the paper does not further elaborate on how they solved the issue when the cluster have the same centroid
 
 #### using manually::kmodes_fit ####
-soy_testset <- soy_set[sample(1:nrow(soy_set)),]
-table(soy_testset$class)
 # looping
+# method 1 - loop
 soy_results_m1 <- data.frame(matrix(NA, ncol = 2, nrow = 100))
 names(soy_results_m1) <- c("accuracy", "CH")
-#method 1 - loop
 for(i in 1:100) {
   soy_testset <- soy_set[sample(1:nrow(soy_set)),]
   clust_soy_testset <- kmodes_fit(data = soy_testset[-ncol(soy_testset)], modes = 4, method  = 1)
@@ -487,12 +470,11 @@ for(i in 1:100) {
                                          labels = clust_soy_testset$labels,
                                          modes = clust_soy_testset$centers)$CH,0)
 }
-soy_results_m1$CH
 summary(soy_results_m1)
 hist(soy_results_m1$accuracy, breaks = 10, main = "Histogram of accuracy using kmodes_fit method = 1", xlab = "Accuracy") 
   abline(v = 0.5, lty = 3)
 
-#method 2
+#method 2 - loop
 soy_results_m2 <- data.frame(matrix(NA, ncol = 2, nrow = 100))
 names(soy_results_m2) <- c("accuracy", "CH")
 for(i in 1:100) {
@@ -507,18 +489,19 @@ for(i in 1:100) {
 }
 head(soy_results_m2)
 
-sum(soy_results_m1$accuracy<=0.89)
-sum(soy_results_m2$accuracy<=0.89)
-table(soy_results_m1$accuracy)
-table(soy_results_m2$accuracy)
+# Latex export
+#sum(soy_results_m1$accuracy<=0.89)
+#sum(soy_results_m2$accuracy<=0.89)
+#table(soy_results_m1$accuracy)
+#table(soy_results_m2$accuracy)
 
-sum(table(soy_results_m1)[-c(1:15),-c(1:19)])
-table(soy_results_m1)
+#table(soy_results_m1)[-c(1:15),-c(1:19)]
+#table(soy_results_m1)
 
-sum(table(soy_results_m2)[-c(1:15),-c(1:19)])
-table(soy_results_m2)
+#table(soy_results_m2)[-c(1:15),-c(1:19)]
+#table(soy_results_m2)
 
-stargazer(cbind(summary(soy_results_m1$accuracy),summary(soy_results_m2$accuracy))) #for latex text
+#stargazer(cbind(summary(soy_results_m1$accuracy),summary(soy_results_m2$accuracy))) #for latex text
 hist(soy_results_m2$accuracy, breaks = 10, main = "Histogram of accuracy using kmodes_fit method = 2", xlab = "Accuracy")
   abline(v = 0.5, lty = 3)
 boxplot(soy_results_m2$accuracy,main = "Histogram of accuracy using kmodes_fit method = 2", ylab = "Accuracy", ylim = c(0,1))
@@ -560,8 +543,6 @@ for(j in gamma_vector) {
   }
 }
 
-
-max(cr_results_g)
 cr_results_g_formatted <- cr_results_g
 cr_results_g_formatted[cr_results_g_formatted <= 0.71] <- 0.71
 cr_results_g_formatted[cr_results_g_formatted >= 0.83] <- 0.83
@@ -689,8 +670,6 @@ for(j in gamma_vector) {
   }
 }
 
-max(cr_results_g_m2)
-
 cr_results_g_m2_formatted <- cr_results_g_m2
 cr_results_g_m2_formatted[cr_results_g_m2_formatted <= 0.71] <- 0.71
 cr_results_g_m2_formatted[cr_results_g_m2_formatted >= 0.83] <- 0.83
@@ -737,8 +716,9 @@ cr_results_gamma_table_m2
 names(cr_results_gamma_table_m2) <- c("accuracy", gamma_vector)
 cr_results_gamma_table_m2
 
-sum(cr_results_g_m1 == 0.83)
-sum(cr_results_g_m2 == 0.83)
+# Latex relevant
+#sum(cr_results_g_m1 == 0.83)
+#sum(cr_results_g_m2 == 0.83)
 
 #### Stargazer ####
 stargazer(as.data.frame(cr_results_gamma_table), summary  = FALSE, title = "Method 1", digits = 2)
