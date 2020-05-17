@@ -588,7 +588,6 @@ cr_results_gamma_table
 cr_results_g_m1 <- data.frame(matrix(NA, ncol = 8, nrow = 100))
 gamma_vector <- c("0.5","0.7","0.9","1","1.1","1.2","1.3","1.4")
 names(cr_results_g_m1) <- gamma_vector
-head(cr_results_g_m1)
 for(j in gamma_vector) {
   for (i in 1:100) {
     cr_testset <- credit_set[sample(1:nrow(credit_set)), ]
@@ -652,7 +651,6 @@ cr_results_gamma_table_m1
 cr_results_g_m2 <- data.frame(matrix(NA, ncol = 9, nrow = 100))
 gamma_vector <- c("0","0.5","0.7","0.9","1","1.1","1.2","1.3","1.4")
 names(cr_results_g_m2) <- gamma_vector
-head(cr_results_g_m2)
 for(j in gamma_vector) {
   for (i in 1:100) {
     cr_testset <- credit_set[sample(1:nrow(credit_set)), ]
